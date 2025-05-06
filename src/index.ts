@@ -1,8 +1,21 @@
 import parse, { createNode, isNode, Node, NodeType } from './parser'
 
-export const clojifn = (fn: any) => {
-  if (fn.$clojifn === void 0) fn.$clojifn = true
-  return fn
+// export const clojifn = (func: any) => {
+//   const interopFn: Function & { $clojifn: boolean } = (...args: any[]) => {
+//     if (args[0] instanceof Scope) {
+//       return func(...args)
+//     } else {
+//       const jsArgs = args.map((arg) => createNode({ type: NodeType.Js, value: arg }))
+//       return func(...jsArgs)
+//     }
+//   }
+//   if (interopFn.$clojifn === void 0) interopFn.$clojifn = true
+//   return interopFn
+// }
+
+export const clojifn = (func: any) => {
+  func.$clojifn = true
+  return func
 }
 
 const hasOwnProperty = (obj: any, propName: string) =>
@@ -40,7 +53,7 @@ const error = (e: any, node: Node) => {
 }
 
 class Scope {
-  private vars: Record<string, any> = Object.create(null)
+  readonly vars: Record<string, any> = Object.create(null)
   private readOnlyVarNames: string[] = []
   private parent?: Scope
   result: any
@@ -126,7 +139,12 @@ const coreScope = new Scope({
   // (fn [a] a)
   fn: clojifn((decScope: Scope, argNamesArray: Node, ...body: any[]) => {
     const fn = clojifn((execScope: Scope, ...args: any[]) => {
-      const evaledArgs = evalList(execScope, args)
+      // if the function is not caled from Cloji
+      // treat arguments as JS values
+      const evaledArgs = (execScope instanceof Scope
+        ? evalList(execScope, args)
+        : [execScope, ...args]
+      )
       const fnScope = new Scope({}, decScope)
       destructArray(fnScope, argNamesArray.value, evaledArgs)
       return executeBlock(fnScope, body)
@@ -139,29 +157,6 @@ const coreScope = new Scope({
   defn: clojifn((scope: Scope, ident: Node, args: Node[], ...body: Node[]) => {
     const _func = scope.get('fn')
     return scope.set(ident.value, _func(scope, args, ...body))
-  }),
-
-  // (jsfn func)
-  // (jsfn [arg1 arg2] expr)
-  jsfn: clojifn((scope: Scope, args: Node, ...body: any[]) => {
-    let func: any
-    if (args === void 0) {
-      return void 0
-    } else if (args?.type === 'array') {
-      const _func = scope.get('fn')
-      func = _func(scope, args, ...body)
-    } else {
-      func = evalExpr(scope, args)
-      if (!func?.$clojifn) {
-        throw new Error(`unexpected ${args?.type}`)
-      }
-    }
-
-    return (...args: any[]) => {
-      const jsArgs = args.map((arg) => createNode({ type: NodeType.Js, value: arg }))
-      const result = func(scope, ...jsArgs)
-      return result
-    }
   }),
 
   // (print 'ok' 'msg')
@@ -195,9 +190,8 @@ const coreScope = new Scope({
   // (array [] (fn [x] x))
   // JS: Array.from()
   array: clojifn((scope: Scope, arrayLike: Node, mapFn: Node) => {
-    const jsfn = scope.get('jsfn')
-    const fn = jsfn(scope, mapFn)
     const arg = evalExpr(scope, arrayLike)
+    const fn = evalExpr(scope, mapFn)
     return Array.from(arg, fn)
   }),
 

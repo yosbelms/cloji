@@ -32,23 +32,23 @@ console.log(scope.result) // 15
 ### 📦 Variables
 
 Def (ident, value) Define variable.
-```lisp
+```clj
 (def a 1)      ;; define a
 ```
 
 Set (ident, value) Set variable value.
-```lisp
+```clj
 (set a 2)      ;; update a
 ```
 
 It works inside fuction body. Variables are readable only inside the scope of the function where it was declared.
-```lisp
+```clj
 (defn f []
   (def a 1) a)
 ```
 
 ### 🔧 Functions
-```lisp
+```clj
 (def f (fn [x] x))
 (f 5) ;; => 5
 
@@ -57,50 +57,44 @@ It works inside fuction body. Variables are readable only inside the scope of th
 ```
 
 Destructiring params
-```lisp
+```clj
 (defn f [p1 &rest] rest)
 (f 3 4 5) ;; return [4 5]
 ```
 
 ### 💡 JavaScript Integration
 
-```lisp
-(jsfn [x] x) ;; returns a native JS function
-```
-
-Passing a defined funtion
-```lisp
-(defn f [x] x)
-(jsfn f) ;; returns a native JS function
-```
-
-```lisp
+```clj
 (new Date) ;; create a new instance
 ```
+
 "Date" is not available by default, it should be provided by using globals.
+```ts
+exec(`(new Date)`, { Date })
+```
 
 ### 📝 Comments
 
 Parser level
-```lisp
+```clj
 ;; this is a comment
 ```
 
 Parsed but not executed
-```lisp
+```clj
 (## this is a comment)
 ```
 
 ### 🖨️ Print
 
-```lisp
+```clj
 (print "Hello" "World")
 ;; Logs: Hello World
 ```
 
 ### 🔀 Conditionals
 
-```lisp
+```clj
 (if true 1 2) ;; => 1
 
 (cond
@@ -111,60 +105,60 @@ Parsed but not executed
 
 ### 🧱 Object Structuring
 
-```lisp
+```clj
 {:name "john" :age 20}
 {:name "peter" &user} ;; spread `user` into the object
 ```
 
 ### 🔎 Object Destructuring
 
-```lisp
+```clj
 (def {name age} user)
 (def {name &rest} user)
 ```
 
 ### 📚 Arrays
 
-```lisp
+```clj
 [1 2 3]
 [1 2 &arr]
 ```
 
 ### 🧩 Array Destructuring
 
-```lisp
+```clj
 (def [head &tail] arr)
 ```
 
 ### 🛠 Utilities
 
 Array (arrayLike, mapperFn). Works like JS [Array.from()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/from)
-```lisp
+```clj
 (array {:length 3} (fn [a i] i)) ;; => [0 1 2]
 ```
 
 Aget (object, ...keys)
-```lisp
+```clj
 (aget {:name "john"} "name") ;; "john"
 (aget {:name "john"} :name)  ;; "john"
 (aget {:name "john" :pets ["cat" "dog"]} :pets 0)  ;; "cat"
 ```
 
 Aset (object, ...keys, value)
-```lisp
+```clj
 (aset {:name "john"} :name "peter")
 (aset {:name "john" :pets ["cat" "dog"]} :pets 0 "pig") ;; {:name "john" :pets ["pig" "dog"]}
 ```
 
 ### ➕ Operators
 
-```lisp
+```clj
 (+ 3 4) ;; => 7
 (?? nil 5) ;; => 5
 ```
 
 Available operators
-```lisp
+```clj
 +
 -
 *
@@ -184,16 +178,16 @@ not
 ### 🧵 Threading
 
 Like Clojure "->"
-```lisp
+```clj
 (thread [1 2 3]
-  (map (jsfn [x] (* x 2)))
-  (filter (jsfn [x] (> x 2))))
+  (map (fn [x] (* x 2)))
+  (filter (fn [x] (> x 2))))
 ```
 
 ### 🚀 Doto
 
 Like Clojure "doto"
-```lisp
+```clj
 (doto [1 2 3]
   (tail)
   (head)) ;; => 2

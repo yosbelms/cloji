@@ -1,7 +1,8 @@
 import 'jasmine'
 import { exec } from '../src'
 
-describe('Std Scope', () => {
+describe('Core Scope', () => {
+
   it('##', () => {
     expect(exec('(## some comment)').result).toBe(void 0)
   })
@@ -34,14 +35,6 @@ describe('Std Scope', () => {
 
     scope = exec('(defn f [x] x) (f 5)')
     expect(scope.result).toBe(5)
-  })
-
-  it('jsfn', () => {
-    let scope = exec('(jsfn [x] x)')
-    expect(scope.result(5)).toBe(5)
-
-    scope = exec('(defn f [x] x) (jsfn f)')
-    expect(scope.result(5)).toBe(5)
   })
 
   describe('print', () => {
@@ -123,8 +116,8 @@ describe('Std Scope', () => {
   it('thread', () => {
     const scope = exec(`
       (thread [3 4 5]
-        (filter (jsfn [x] (< x 5)))
-        (map (jsfn [x] (+ x 3))))
+        (filter (fn [x] (< x 5)))
+        (map (fn [x] (+ x 3))))
     `)
     expect(scope.result).toEqual([6, 7])
   })
