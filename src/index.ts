@@ -300,11 +300,11 @@ const coreScope = new Scope({
   or: clojifn((scope: Scope, ...items: any[]) => {
     return applyBinaryOp(scope, items, (a: any, b: any) => a || b)
   }),
-  '??': clojifn((scope: Scope, ...items: any[]) => {
-    return applyBinaryOp(scope, items, (a: any, b: any) => a ?? b)
-  }),
   not: clojifn((scope: Scope, a: any) => {
     return !evalExpr(scope, a)
+  }),
+  '??': clojifn((scope: Scope, ...items: any[]) => {
+    return applyBinaryOp(scope, items, (a: any, b: any) => a ?? b)
   }),
 })
 
