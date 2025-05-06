@@ -3,6 +3,7 @@ type Data = {
   stream: string
   startLine: number
   currentLine: number
+  stack: string[]
 }
 
 export const NodeType = {
@@ -38,52 +39,64 @@ export type Node = {
   type: NodeTypeValue
   value: NodeValue
   line: number
-  name: string
 }
 
 const stringRegex = /^("([^\\"]|\\[\s\S])*")/
 const keyRegex = /^\:\w+/
 const numberRegex = /^0x[\da-fA-F]+|^\d*\.?\d+(?:[eE][+-]?\d+)?/
-const keywordRegex = /^true|^false|^nil|^void/
+const keywordRegex = /^(true|false|nil|void)\b/
 const identRegex = /^[\d\w\.\+\-\*\/\=\<\>\"\'\$\#\?]+/
 const restRegex = /^\&[\d\w\.\+\-\*\/\=\<\>\"\'\$\#\?]+/
 
-export default (stream: string, fileName: string = '') => {
-  var data = {
+export default (stream: string) => {
+  const data: Data = {
     position: 0,
     stream,
-    fileName,
     startLine: 1,
     currentLine: 1,
+    stack: [],
   }
-  return parse(data)
+  const node = parse(data)
+
+  if (data.stack.length > 0) {
+    throw new Error(`Unmatched opening bracket '${data.stack.pop()}' at line ${data.currentLine}`)
+  }
+
+  return node
+}
+
+const skipWhitespace = (data: Data) => {
+  const whitespaceRegex = /^[\s\n]+/
+  match(data, whitespaceRegex, true)
 }
 
 const match = (data: Data, pattern: RegExp, consume: boolean) => {
-  const { stream, position, currentLine } = data
-  const restOfStream = stream.substring(position)
-  const match = restOfStream.match(pattern)
-  if (!match || !match.length) {
-    return null
-  }
+  pattern.lastIndex = 0
+  const rest = data.stream.slice(data.position)
+  const result = pattern.exec(rest)
+  if (!result) return null
+
   if (consume) {
-    data.startLine = currentLine
-    data.position += match[0].length
-    data.currentLine += match[0].match(/\n/g)?.length ?? 0
+    data.startLine = data.currentLine
+    data.position += result[0].length
+    data.currentLine += (result[0].match(/\n/g) || []).length
   }
-  return match[0]
+
+  return result[0]
 }
 
 const isEnd = (data: Data) => {
   return data.position >= data.stream.length
 }
 
-const parse = (data: Data, type: NodeTypeValue = NodeType.Root) => {
+const parse = (data: Data) => {
   let txt: string | null = ''
   let isComment: boolean = false
-  const node: Node = createNode({ type, value: [], line: 0, name: '' })
+  const node: Node = createNode({ type: NodeType.Root, value: [], line: 0 })
 
   while (!isEnd(data)) {
+    skipWhitespace(data)
+
     if (isComment) {
       if (match(data, /^\n/, true)) {
         isComment = false
@@ -93,27 +106,42 @@ const parse = (data: Data, type: NodeTypeValue = NodeType.Root) => {
     } else if (match(data, /^;;/, true)) {
       isComment = true
     } else if (match(data, /^\)/, true)) {
+      if (data.stack.pop() !== '(') {
+        throw new Error(`Unexpected closing parenthesis at line ${data.currentLine}`)
+      }
       break
     } else if (match(data, /^\(/, true)) {
+      data.stack.push('(')
       const line = data.startLine
       node.value.push(createNode({
-        ...parse(data, NodeType.Sexpr),
+        ...parse(data),
+        type: NodeType.Sexpr,
         line
       }))
     } else if (match(data, /^\]/, true)) {
+      if (data.stack.pop() !== '[') {
+        throw new Error(`Unexpected closing bracket at line ${data.currentLine}`)
+      }
       break
     } else if (match(data, /^\[/, true)) {
+      data.stack.push('[')
       const line = data.startLine
       node.value.push(createNode({
-        ...parse(data, NodeType.Array),
+        ...parse(data),
+        type: NodeType.Array,
         line
       }))
     } else if (match(data, /^\}/, true)) {
+      if (data.stack.pop() !== '{') {
+        throw new Error(`Unexpected closing brace at line ${data.currentLine}`)
+      }
       break
     } else if (match(data, /^\{/, true)) {
+      data.stack.push('{')
       const line = data.startLine
       node.value.push(createNode({
-        ...parse(data, NodeType.Object),
+        ...parse(data),
+        type: NodeType.Object,
         line
       }))
     } else if (txt = match(data, stringRegex, true)) {
@@ -152,12 +180,12 @@ const parse = (data: Data, type: NodeTypeValue = NodeType.Root) => {
         value: txt.trim(),
         line: data.startLine
       }))
-    } else if (match(data, /^\n/, false)) {
-      data.currentLine++
-      data.position++
     } else {
-      data.position++
+      const char = data.stream[data.position - 1]
+      throw new Error(`Unrecognized token at line ${data.currentLine}: "${char}", code "${char.charCodeAt(0)}"`)
     }
+
+    skipWhitespace(data)
   }
 
   node.line = data.currentLine
