@@ -1,18 +1,5 @@
 import parse, { createNode, isNode, Node, NodeType } from './parser'
 
-// export const clojifn = (func: any) => {
-//   const interopFn: Function & { $clojifn: boolean } = (...args: any[]) => {
-//     if (args[0] instanceof Scope) {
-//       return func(...args)
-//     } else {
-//       const jsArgs = args.map((arg) => createNode({ type: NodeType.Js, value: arg }))
-//       return func(...jsArgs)
-//     }
-//   }
-//   if (interopFn.$clojifn === void 0) interopFn.$clojifn = true
-//   return interopFn
-// }
-
 export const clojifn = (func: any) => {
   func.$clojifn = true
   return func
